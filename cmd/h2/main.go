@@ -19,6 +19,7 @@ func main() {
 	dialCtx, dialCancel := context.WithTimeout(ctx, 10*time.Second)
 	defer dialCancel()
 
+	// Establish TCP connection with remote server
 	dialer := net.Dialer{}
 	conn, err := dialer.DialContext(dialCtx, "tcp", "localhost:9999")
 	if err != nil {
@@ -27,6 +28,7 @@ func main() {
 	}
 	fmt.Printf("Connected: %#v\n", conn)
 
+	// Provide a http2 server listening to the previously established connection
 	h2 := &H2Conn{
 		conn: conn,
 		server: &http2.Server{
