@@ -20,7 +20,7 @@ func main() {
 	// ctx := context.Background()
 
 	// Establish TCP connection with remote server
-	conn, err := net.Dial("tcp", "localhost:9990")
+	conn, err := net.Dial("tcp", "localhost:9999")
 	if err != nil {
 		log.Fatalf("dial error: %v", err)
 		return
@@ -46,7 +46,7 @@ func main() {
 	// }
 
 	// go func() {
-	req, err := http.NewRequest("GET", "http://localhost:9990", nil)
+	req, err := http.NewRequest("GET", "http://localhost:9999", nil)
 	if err != nil {
 		fmt.Println("error creating request: ", err)
 		os.Exit(1)

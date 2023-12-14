@@ -14,33 +14,32 @@ import (
 )
 
 const (
-	tcpPort  = 9999
-	httpPort = 9990
+	port = 9999
 )
 
 func main() {
-	addr := fmt.Sprintf(":%d", tcpPort)
+	addr := fmt.Sprintf(":%d", port)
 
 	// TCP listener
-	go func() {
-		listener, err := net.Listen("tcp", addr)
-		if err != nil {
-			fmt.Println("error listening to TCP: ", err)
-			return
-		}
-		defer listener.Close()
-		fmt.Println("TCP listener on: ", listener.Addr())
+	// go func() {
+	listener, err := net.Listen("tcp", addr)
+	if err != nil {
+		fmt.Println("error listening to TCP: ", err)
+		return
+	}
+	defer listener.Close()
+	fmt.Println("TCP listener on: ", listener.Addr())
 
-		for {
-			conn, err := listener.Accept()
-			if err != nil {
-				fmt.Println("error accepting conn: ", err)
-				continue
-			}
+	// for {
+	// 	conn, err := listener.Accept()
+	// 	if err != nil {
+	// 		fmt.Println("error accepting conn: ", err)
+	// 		continue
+	// 	}
 
-			go handleConnection(conn)
-		}
-	}()
+	// 	go handleConnection(conn)
+	// }
+	// }()
 
 	// APIs
 	r := chi.NewRouter()
@@ -49,14 +48,15 @@ func main() {
 	r.Get("/", healthCheck)
 	r.Post("/connect", longlive)
 
-	fmt.Printf("HTTP server listening on port %d\n", httpPort)
+	fmt.Printf("HTTP server listening on port %d\n", port)
 
 	h2s := &http2.Server{}
 	srv := &http.Server{
-		Addr:    fmt.Sprintf(":%d", httpPort),
+		Addr:    fmt.Sprintf(":%d", port),
 		Handler: h2c.NewHandler(r, h2s),
 	}
-	if err := srv.ListenAndServe(); err != nil {
+
+	if err := srv.Serve(listener); err != nil {
 		log.Fatalf("error running h2 server: %v", err)
 	}
 }
