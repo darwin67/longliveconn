@@ -107,6 +107,7 @@ func longlive(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "server doesn't support hijacking", http.StatusInternalServerError)
 		return
 	}
+	fmt.Println("Supports hijacking")
 
 	conn, bufrw, err := hj.Hijack()
 	if err != nil {

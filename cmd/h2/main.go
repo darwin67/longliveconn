@@ -2,31 +2,63 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
+	"io/ioutil"
 	"log"
+
 	"math"
 	"net"
 	"net/http"
-	"time"
+	"os"
+
+	// "time"
 
 	"golang.org/x/net/http2"
 )
 
 func main() {
 	fmt.Println("HTTP/2 Client!!")
-
 	ctx := context.Background()
-	dialCtx, dialCancel := context.WithTimeout(ctx, 10*time.Second)
-	defer dialCancel()
 
 	// Establish TCP connection with remote server
-	dialer := net.Dialer{}
-	conn, err := dialer.DialContext(dialCtx, "tcp", "localhost:9999")
+	conn, err := net.Dial("tcp", "localhost:9990")
 	if err != nil {
 		log.Fatalf("dial error: %v", err)
 		return
 	}
 	fmt.Printf("Connected: %#v\n", conn)
+
+	client := &http.Client{
+		Transport: &http2.Transport{
+			AllowHTTP: true,
+			DialTLS: func(network, addr string, cfg *tls.Config) (net.Conn, error) {
+				return conn, nil
+			},
+		},
+	}
+
+	go func() {
+		req, err := http.NewRequest("POST", "http://localhost:9990/connect", nil)
+		if err != nil {
+			fmt.Println("error creating request: ", err)
+			os.Exit(1)
+		}
+		resp, err := client.Do(req)
+		if err != nil {
+			fmt.Println("error making request: ", err)
+			os.Exit(1)
+		}
+		defer resp.Body.Close()
+
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			fmt.Println("error reading body: ", err)
+			os.Exit(1)
+		}
+
+		fmt.Println("Response Status: ", string(body))
+	}()
 
 	// Provide a http2 server listening to the previously established connection
 	h2 := &H2Conn{
