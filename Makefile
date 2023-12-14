@@ -11,5 +11,5 @@ h2client:
 	go run ./cmd/h2
 
 .PHONY: h2server
-server:
+h2server:
 	go run ./cmd/h2server

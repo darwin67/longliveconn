@@ -32,6 +32,7 @@ func main() {
 		defer close(done)
 		for {
 			_, message, err := c.ReadMessage()
+			// NOTE: reconnect attempts should probably happen here.
 			if err != nil {
 				log.Println("read: ", err)
 				return
