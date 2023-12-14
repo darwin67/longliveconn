@@ -6,12 +6,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-
-	"math"
+	"os"
+	// "math"
 	"net"
 	"net/http"
-	"os"
-
 	// "time"
 
 	"golang.org/x/net/http2"
@@ -19,7 +17,7 @@ import (
 
 func main() {
 	fmt.Println("HTTP/2 Client!!")
-	ctx := context.Background()
+	// ctx := context.Background()
 
 	// Establish TCP connection with remote server
 	conn, err := net.Dial("tcp", "localhost:9990")
@@ -29,48 +27,58 @@ func main() {
 	}
 	fmt.Printf("Connected: %#v\n", conn)
 
-	client := &http.Client{
-		Transport: &http2.Transport{
-			AllowHTTP: true,
-			DialTLS: func(network, addr string, cfg *tls.Config) (net.Conn, error) {
-				return conn, nil
-			},
+	tr := &http2.Transport{
+		AllowHTTP: true,
+		DialTLS: func(network, addr string, cfg *tls.Config) (net.Conn, error) {
+			return conn, nil
 		},
 	}
-
-	go func() {
-		req, err := http.NewRequest("POST", "http://localhost:9990/connect", nil)
-		if err != nil {
-			fmt.Println("error creating request: ", err)
-			os.Exit(1)
-		}
-		resp, err := client.Do(req)
-		if err != nil {
-			fmt.Println("error making request: ", err)
-			os.Exit(1)
-		}
-		defer resp.Body.Close()
-
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			fmt.Println("error reading body: ", err)
-			os.Exit(1)
-		}
-
-		fmt.Println("Response Status: ", string(body))
-	}()
-
-	// Provide a http2 server listening to the previously established connection
-	h2 := &H2Conn{
-		conn: conn,
-		server: &http2.Server{
-			MaxConcurrentStreams: math.MaxUint32,
-		},
+	h2conn, err := tr.NewClientConn(conn)
+	if err != nil {
+		fmt.Println("error creating new h2 conn: ", err)
+		os.Exit(1)
 	}
 
-	if err := h2.Serve(ctx); err != nil {
-		log.Fatalf("h2 error: %v", err)
+	fmt.Printf("h2 conn: %#v\n", h2conn.State())
+	// if err := h2conn.Ping(ctx); err != nil {
+	// 	fmt.Println("ping error: ", err)
+	// 	os.Exit(1)
+	// }
+
+	// go func() {
+	req, err := http.NewRequest("GET", "http://localhost:9990", nil)
+	if err != nil {
+		fmt.Println("error creating request: ", err)
+		os.Exit(1)
 	}
+	// resp, err := client.Do(req)
+	resp, err := h2conn.RoundTrip(req)
+	if err != nil {
+		fmt.Println("error making request: ", err)
+		os.Exit(1)
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Println("error reading body: ", err)
+		os.Exit(1)
+	}
+
+	fmt.Println("Response: ", string(body))
+	// }()
+
+	// // Provide a http2 server listening to the previously established connection
+	// h2 := &H2Conn{
+	// 	conn: conn,
+	// 	server: &http2.Server{
+	// 		MaxConcurrentStreams: math.MaxUint32,
+	// 	},
+	// }
+
+	// if err := h2.Serve(ctx); err != nil {
+	// 	log.Fatalf("h2 error: %v", err)
+	// }
 }
 
 type H2Conn struct {
