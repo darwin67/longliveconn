@@ -80,7 +80,7 @@ func echo(conn net.Conn) {
 	}
 	fmt.Printf("h2 conn: %#v\n", h2conn.State())
 
-	req, err := http.NewRequest("GET", "http://localhost:3000", nil)
+	req, err := http.NewRequest("GET", "http://doesntmatter:3000", nil)
 	if err != nil {
 		fmt.Printf("error creating request: %#v\n", req)
 		return

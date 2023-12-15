@@ -2,15 +2,11 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
-	"os"
-
-	// "time"
 
 	"golang.org/x/net/http2"
 )
@@ -26,45 +22,6 @@ func main() {
 		return
 	}
 	fmt.Printf("Connected: %#v\n", conn)
-
-	tr := &http2.Transport{
-		AllowHTTP: true,
-		DialTLS: func(network, addr string, cfg *tls.Config) (net.Conn, error) {
-			return conn, nil
-		},
-	}
-	h2conn, err := tr.NewClientConn(conn)
-	if err != nil {
-		fmt.Println("error creating new h2 conn: ", err)
-		os.Exit(1)
-	}
-
-	fmt.Printf("h2 conn: %#v\n", h2conn.State())
-
-	// go func() {
-	// 	req, err := http.NewRequest("GET", "http://localhost:9999", nil)
-	// 	if err != nil {
-	// 		fmt.Println("error creating request: ", err)
-	// 		os.Exit(1)
-	// 	}
-	// 	// resp, err := client.Do(req)
-	// 	resp, err := h2conn.RoundTrip(req)
-	// 	if err != nil {
-	// 		fmt.Println("error making request: ", err)
-	// 		os.Exit(1)
-	// 	}
-	// 	defer resp.Body.Close()
-
-	// 	body, err := ioutil.ReadAll(resp.Body)
-	// 	if err != nil {
-	// 		fmt.Println("error reading body: ", err)
-	// 		os.Exit(1)
-	// 	}
-
-	// 	fmt.Println("Response: ", string(body))
-
-	// 	fmt.Printf("Conn: %#v\n", h2conn.State())
-	// }()
 
 	// Provide a http2 server listening to the previously established connection
 	h2 := &H2Conn{
