@@ -3,13 +3,13 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
-	"os"
-	// "math"
 	"net"
 	"net/http"
+	"os"
+
 	// "time"
 
 	"golang.org/x/net/http2"
@@ -17,7 +17,7 @@ import (
 
 func main() {
 	fmt.Println("HTTP/2 Client!!")
-	// ctx := context.Background()
+	ctx := context.Background()
 
 	// Establish TCP connection with remote server
 	conn, err := net.Dial("tcp", "localhost:9999")
@@ -40,45 +40,43 @@ func main() {
 	}
 
 	fmt.Printf("h2 conn: %#v\n", h2conn.State())
-	// if err := h2conn.Ping(ctx); err != nil {
-	// 	fmt.Println("ping error: ", err)
-	// 	os.Exit(1)
-	// }
 
 	// go func() {
-	req, err := http.NewRequest("GET", "http://localhost:9999", nil)
-	if err != nil {
-		fmt.Println("error creating request: ", err)
-		os.Exit(1)
-	}
-	// resp, err := client.Do(req)
-	resp, err := h2conn.RoundTrip(req)
-	if err != nil {
-		fmt.Println("error making request: ", err)
-		os.Exit(1)
-	}
-	defer resp.Body.Close()
+	// 	req, err := http.NewRequest("GET", "http://localhost:9999", nil)
+	// 	if err != nil {
+	// 		fmt.Println("error creating request: ", err)
+	// 		os.Exit(1)
+	// 	}
+	// 	// resp, err := client.Do(req)
+	// 	resp, err := h2conn.RoundTrip(req)
+	// 	if err != nil {
+	// 		fmt.Println("error making request: ", err)
+	// 		os.Exit(1)
+	// 	}
+	// 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		fmt.Println("error reading body: ", err)
-		os.Exit(1)
-	}
+	// 	body, err := ioutil.ReadAll(resp.Body)
+	// 	if err != nil {
+	// 		fmt.Println("error reading body: ", err)
+	// 		os.Exit(1)
+	// 	}
 
-	fmt.Println("Response: ", string(body))
+	// 	fmt.Println("Response: ", string(body))
+
+	// 	fmt.Printf("Conn: %#v\n", h2conn.State())
 	// }()
 
-	// // Provide a http2 server listening to the previously established connection
-	// h2 := &H2Conn{
-	// 	conn: conn,
-	// 	server: &http2.Server{
-	// 		MaxConcurrentStreams: math.MaxUint32,
-	// 	},
-	// }
+	// Provide a http2 server listening to the previously established connection
+	h2 := &H2Conn{
+		conn: conn,
+		server: &http2.Server{
+			MaxConcurrentStreams: 2,
+		},
+	}
 
-	// if err := h2.Serve(ctx); err != nil {
-	// 	log.Fatalf("h2 error: %v", err)
-	// }
+	if err := h2.Serve(ctx); err != nil {
+		log.Fatalf("h2 error: %v", err)
+	}
 }
 
 type H2Conn struct {
@@ -101,4 +99,17 @@ func (c *H2Conn) Serve(ctx context.Context) error {
 }
 
 func (c *H2Conn) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// w.Header().Add("Content-Type", "application/json")
+
+	fmt.Printf("Req: %#v\n", r)
+
+	resp, err := json.Marshal(map[string]string{"result": "ok"})
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte("error serializing to json"))
+		return
+	}
+
+	w.WriteHeader(200)
+	w.Write(resp)
 }
