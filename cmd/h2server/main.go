@@ -97,7 +97,7 @@ func echo(conn net.Conn) {
 		fmt.Printf("error reading body: %#v\n", err)
 		return
 	}
-	fmt.Printf("Response: %v\n", body)
+	fmt.Printf("Response: %s\n", body)
 
 	// fmt.Println("Accepted conn from: ", conn.RemoteAddr())
 
