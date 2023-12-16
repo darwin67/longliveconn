@@ -23,6 +23,10 @@ func main() {
 	}
 	fmt.Printf("Connected: %#v\n", conn)
 
+	go func() {
+		// Submit a HTTP request here to allow it to be hijacked
+	}()
+
 	// Provide a http2 server listening to the previously established connection
 	h2 := &H2Conn{
 		conn: conn,
@@ -56,7 +60,7 @@ func (c *H2Conn) Serve(ctx context.Context) error {
 }
 
 func (c *H2Conn) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// w.Header().Add("Content-Type", "application/json")
+	w.Header().Add("Content-Type", "application/json")
 
 	fmt.Printf("Req: %#v\n", r)
 

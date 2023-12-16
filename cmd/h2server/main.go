@@ -6,15 +6,14 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	// "log"
+	"log"
 	"net"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"golang.org/x/net/http2"
-	// "github.com/go-chi/chi/v5"
-	// "github.com/go-chi/chi/v5/middleware"
-	// "golang.org/x/net/http2"
-	// "golang.org/x/net/http2/h2c"
+	"golang.org/x/net/http2/h2c"
 )
 
 const (
@@ -33,34 +32,34 @@ func main() {
 	defer listener.Close()
 	fmt.Println("TCP listener on: ", listener.Addr())
 
-	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			fmt.Println("error accepting conn: ", err)
-			continue
-		}
+	// for {
+	// 	conn, err := listener.Accept()
+	// 	if err != nil {
+	// 		fmt.Println("error accepting conn: ", err)
+	// 		continue
+	// 	}
 
-		go echo(conn)
-	}
+	// 	go echo(conn)
+	// }
 
 	// APIs
-	// r := chi.NewRouter()
-	// r.Use(middleware.Logger)
+	r := chi.NewRouter()
+	r.Use(middleware.Logger)
 
-	// r.Get("/", healthCheck)
-	// r.Post("/connect", longlive)
+	r.Get("/", healthCheck)
+	r.Post("/connect", longlive)
 
-	// fmt.Printf("HTTP server listening on port %d\n", port)
+	fmt.Printf("HTTP server listening on port %d\n", port)
 
-	// h2s := &http2.Server{}
-	// srv := &http.Server{
-	// 	Addr:    fmt.Sprintf(":%d", port),
-	// 	Handler: h2c.NewHandler(r, h2s),
-	// }
+	h2s := &http2.Server{}
+	srv := &http.Server{
+		Addr:    addr,
+		Handler: h2c.NewHandler(r, h2s),
+	}
 
-	// if err := srv.Serve(listener); err != nil {
-	// 	log.Fatalf("error running h2 server: %v", err)
-	// }
+	if err := srv.Serve(listener); err != nil {
+		log.Fatalf("error running h2 server: %v", err)
+	}
 }
 
 func echo(conn net.Conn) {
@@ -144,15 +143,49 @@ func longlive(w http.ResponseWriter, r *http.Request) {
 	}
 	fmt.Println("Supports hijacking")
 
-	conn, bufrw, err := hj.Hijack()
+	conn, _, err := hj.Hijack()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	defer conn.Close()
+	// defer conn.Close()
 
-	bufrw.WriteString("Now we're speaking raw TCP. Say hi: ")
-	bufrw.Flush()
+	tr := &http2.Transport{
+		AllowHTTP: true,
+		DialTLS: func(network, addr string, cfg *tls.Config) (net.Conn, error) {
+			return conn, nil
+		},
+	}
+	h2conn, err := tr.NewClientConn(conn)
+	if err != nil {
+		fmt.Printf("error generating new client conn: %v\n", err)
+		return
+	}
+	fmt.Printf("h2 conn: %#v\n", h2conn.State())
+
+	for i := 0; i < 10; i++ {
+		req, err := http.NewRequest("GET", "http://doesntmatter:3000", nil)
+		if err != nil {
+			fmt.Printf("error creating request: %#v\n", req)
+			return
+		}
+		resp, err := h2conn.RoundTrip(req)
+		if err != nil {
+			fmt.Printf("error making request: %#v\n", err)
+			return
+		}
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			fmt.Printf("error reading body: %#v\n", err)
+			return
+		}
+		fmt.Printf("Response: %s\n", body)
+
+		resp.Body.Close()
+	}
+
+	// bufrw.WriteString("Now we're speaking raw TCP. Say hi: ")
+	// bufrw.Flush()
 	// s, err := bufrw.ReadString('\n')
 	// if err != nil {
 	// 	log.Printf("error reading string: %v", err)
