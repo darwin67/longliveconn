@@ -64,8 +64,8 @@ func main() {
 }
 
 func echo(conn net.Conn) {
-	defer conn.Close()
-	fmt.Printf("conn: %#v\n", conn)
+	// defer conn.Close()
+	fmt.Println("Accepted conn from: ", conn.RemoteAddr())
 
 	tr := &http2.Transport{
 		AllowHTTP: true,
@@ -80,26 +80,26 @@ func echo(conn net.Conn) {
 	}
 	fmt.Printf("h2 conn: %#v\n", h2conn.State())
 
-	req, err := http.NewRequest("GET", "http://doesntmatter:3000", nil)
-	if err != nil {
-		fmt.Printf("error creating request: %#v\n", req)
-		return
-	}
-	resp, err := h2conn.RoundTrip(req)
-	if err != nil {
-		fmt.Printf("error making request: %#v\n", err)
-		return
-	}
-	defer resp.Body.Close()
+	for i := 0; i < 10; i++ {
+		req, err := http.NewRequest("GET", "http://doesntmatter:3000", nil)
+		if err != nil {
+			fmt.Printf("error creating request: %#v\n", req)
+			return
+		}
+		resp, err := h2conn.RoundTrip(req)
+		if err != nil {
+			fmt.Printf("error making request: %#v\n", err)
+			return
+		}
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			fmt.Printf("error reading body: %#v\n", err)
+			return
+		}
+		fmt.Printf("Response: %s\n", body)
 
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		fmt.Printf("error reading body: %#v\n", err)
-		return
+		resp.Body.Close()
 	}
-	fmt.Printf("Response: %s\n", body)
-
-	// fmt.Println("Accepted conn from: ", conn.RemoteAddr())
 
 	// // We can read and write to the connection using conn.Read and conn.Write
 	// // For example, echoing the received data back to the client:
